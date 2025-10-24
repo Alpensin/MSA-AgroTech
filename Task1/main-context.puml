@@ -1,0 +1,22 @@
+@startuml main context diagram AgroTech
+
+' Задаем стиль
+!NEW_C4_STYLE=1
+!theme C4_violet from ../C4-PlantUML/themes
+
+' Импортируем элементы
+!include ../C4-PlantUML/C4_Context.puml
+
+' Определяем акторов
+Person(operator, "Operator")
+Person(cto, "CTO")
+Person(duty, "Duty")
+System(vidmon, "Video Monitoring")
+System(edgemon, "Edge-Device Monitoring")
+System(notification, "Notification")
+System_Ext(agrotech, "AgroTech", "основная сеть АгроТех")
+
+' Рисуем связи
+
+
+@enduml

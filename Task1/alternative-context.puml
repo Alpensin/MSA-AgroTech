@@ -1,0 +1,17 @@
+@startuml alternative context diagram AgroTech
+
+' Задаем стиль
+!NEW_C4_STYLE=1
+!theme C4_violet from ../C4-PlantUML/themes
+
+' Импортируем элементы
+!include ../C4-PlantUML/C4_Context.puml
+
+' Определяем акторов
+
+
+' Рисуем связи
+
+
+
+@enduml
