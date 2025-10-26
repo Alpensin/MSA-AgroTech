@@ -1,4 +1,4 @@
-@startuml alternative context diagram AgroTech
+@startuml main context diagram AgroTech
 
 ' Задаем стиль
 !NEW_C4_STYLE=1
@@ -9,9 +9,53 @@
 
 ' Определяем акторов
 
+Person(duty, "Дежурная смена", "Состоит из отдельного персонала или дежурных админов и разработчиков")
+Person(analyst, "Аналитик данных")
+
+Enterprise_Boundary(farm, "Ферма"){
+    Person(operator, "Оператор", "Сотрудник на ферме")
+    System(edge_control, "Управление edge-устройствами", "Анализирует полученные данные с IoT устройств, управляет ими")
+    System(edge_device, "Edge-устройство", "Различные IoT датчики и пульты управления оборудованием")
+    System(vid_mon, "Видеорегистратор", "Точка сбора видеопотоков с камер")
+    System(vid_mon_anal, "Анализ данных с видеомониторинга", "Обрабатывает потоки видео с камер с помощью ИИ")
+    System(notification, "Отправка уведомлений", "Служит для отправки уведомлений у различные источники")
+    System(local_metrics_hub, "Сбор метрик", "Точка сбора метрик")
+}
+
+Enterprise_Boundary(center, "Центральный узел") {
+    System(global_metrics_hub, "Сбор метрик со всех ферм", "Собирает метрики, фиксирует аварии")
+    System(web_portal, "Веб-портал", "Авторизация и отображение данных")
+    System(global_notification_hub, "Сбор и роутинг уведомлений", "Получает уведомления от ферм. Роутит или генерит свои уведомления")
+}
+System_Ext(existing_system, "Общая система предприятия")
 
 ' Рисуем связи
 
+' В пределах фермы
+Rel(vid_mon, vid_mon_anal, "Передает потоки видео")
+Rel(vid_mon_anal, local_metrics_hub, "Передает метрики")
+Rel(vid_mon_anal, notification, "Отправляет уведомления по анализу видеопотоков")
 
+Rel(local_metrics_hub, notification, "Отправляет уведомления по данным из метрик")
+Rel(edge_control, edge_device, "Управляет устройствами\nсобирает метрики")
+Rel(edge_control, notification, "Отправляет уведомления по edge-устройствам")
+Rel(edge_control, local_metrics_hub, "Передает метрики")
 
-@enduml
+Rel(notification, operator, "Отправляет уведомления по edge-устройствам, анализу видео")
+
+' Между фермой и цетральным узлом
+Rel(notification, global_notification_hub, "Отправляет уведомления по edge-устройствам, анализу видео")
+Rel(local_metrics_hub, global_metrics_hub, "Отправляет метрики по edge-устройствам, анализу видео")
+
+' В рамках центрального узла
+Rel(global_notification_hub, duty, "Отправляет уведомления")
+Rel(duty, web_portal, "Следят за показателями с ферм, управляют расписанием и работой узлов")
+Rel(analyst, global_metrics_hub, "Проводит аналитику полученных данных от ферм")
+Rel(web_portal, global_metrics_hub, "Отображает данные по метрикам")
+Rel(web_portal, global_notification_hub, "Отображает уведомления")
+
+' Между центральным сервером и общей системой предприятия
+Rel(global_metrics_hub, existing_system, "Передает метрики в имеющиеся хранилища")
+Rel(global_notification_hub, existing_system, "Передает уведомления в имеющиеся системы")
+
+@endumlы
