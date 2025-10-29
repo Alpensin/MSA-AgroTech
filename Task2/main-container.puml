@@ -8,17 +8,27 @@
 !include ../C4-PlantUML/C4_Container.puml
 
 ' Определяем акторов
-
+' Для отправки метрик с iot можно использовать MQTT. А значит можно слать сразу в брокер. Переделать выделив отдельно брокер в c4 и c3
 Enterprise_Boundary(farm, "Ферма"){
     Person(operator, "Оператор", "Сотрудник на ферме")
-    System(edge_control, "Управление edge-устройствами", "Анализирует полученные данные с IoT устройств, управляет ими")
+    System_Boundary(edge_control, "Управление edge-устройствами"){
+        Container(edge_control_api, "Настройка расписания", "Python FastAPI", "Для управления расписанием")
+        Container(edge_control_worker, "Воркер системы управления", "go", "Читает")
+        ContainerDb(postgres, "БД")
+    }
     System(edge_device, "Edge-устройство", "Различные IoT датчики и пульты управления оборудованием")
     System(vid_mon, "Видеорегистратор", "Точка сбора видеопотоков с камер")
-        System_Boundary(vid_mon_anal, "Анализ данных с видеомониторинга"){
+    System_Boundary(vid_mon_anal, "Анализ данных с видеомониторинга"){
         Container(ai, "Видеоаналитика ИИ", "Python FastAPI", "Анализ видеопотоков с помощью ИИ")
     }
-    System(notification, "Отправка уведомлений", "Служит для отправки уведомлений у различные источники")
-    System(local_metrics_hub, "Сбор метрик", "Точка сбора метрик")
+    System_Boundary(notification, "Отправка уведомлений"){
+        Container(notification_rabbit, "Сбор уведомлений", "AMQP", "Сбор уведомлений")
+        Container(notification_worker, "Воркер уведомлений", "Go", "Читает данные из брокера и перенаправляет нужному адресату")
+    }
+    System_Boundary(local_metrics_hub, "Точка сбора метрик"){
+        Container(metrics_rabbit, "Сбор метрик", "AMQP", "Сбор уведомлений")
+        Container(metrics_worker, "Воркер уведомлений", "Go", "Читает данные из брокера и перенаправляет нужному адресату")
+    }
 }
 
 ' Рисуем связи
@@ -26,7 +36,10 @@ Enterprise_Boundary(farm, "Ферма"){
 
 ' В пределах фермы
 Rel(ai, vid_mon, "Получает видеопотоки", "ONVIF")
-
+Rel(ai, notification_rabbit, "Отправляет события", "AMQP")
+Rel(notification_worker, notification_rabbit, "Читает события", "AMQP")
+Rel(ai, metrics_rabbit, "Отправляет метрики", "AMQP")
+Rel(metrics_worker, metrics_rabbit, "Читает метрики", "AMQP")
 ' Между фермой и цетральным сервером
 
 
