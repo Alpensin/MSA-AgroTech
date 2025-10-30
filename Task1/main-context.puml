@@ -12,19 +12,21 @@
 
 Enterprise_Boundary(farm, "Ферма"){
     Person(operator, "Оператор", "Сотрудник на ферме")
+    System(scheduling, "Управление расписанием", "API для формирования расписания устройств")
     System(edge_control, "Управление edge-устройствами", "Анализирует полученные данные с IoT устройств, управляет ими")
     System(edge_device, "Edge-устройство", "Различные IoT датчики и пульты управления оборудованием")
     System(vid_mon, "Видеорегистратор", "Точка сбора видеопотоков с камер")
+    System(farm_broker, "Брокер", "Точка сбора метрик и уведомлений")
     System(vid_mon_anal, "Анализ данных с видеомониторинга", "Обрабатывает потоки видео с камер с помощью ИИ")
-    System(notification, "Отправка уведомлений", "Служит для отправки уведомлений у различные источники")
-    System(local_metrics_hub, "Сбор метрик", "Точка сбора метрик")
+    System(farm_notification, "Отправка уведомлений", "Служит для отправки уведомлений у различные источники")
 }
 
 Enterprise_Boundary(center, "Центральный узел") {
     Person(duty, "Дежурная смена", "Состоит из отдельного персонала или дежурных админов и разработчиков")
     Person(analyst, "Аналитик данных")
-    System(global_metrics_hub, "Сбор метрик со всех ферм", "Собирает метрики, фиксирует аварии")
-    System(global_notification_hub, "Сбор и роутинг уведомлений", "Получает уведомления от ферм. Роутит или генерит свои уведомления")
+    System(global_broker, "Брокер", "Точка сбора метрик и уведомлений")
+    System(global_metrics, "Анализ метрик со всех ферм", "Собирает метрики, фиксирует аварии")
+    System(global_notification, "Анализ и роутинг уведомлений", "Получает уведомления от ферм. Роутит или генерит свои уведомления")
 }
 System_Ext(existing_system, "Общая система предприятия")
 
@@ -32,26 +34,32 @@ System_Ext(existing_system, "Общая система предприятия")
 
 ' В пределах фермы
 Rel(vid_mon, vid_mon_anal, "Передает потоки видео")
-Rel(vid_mon_anal, local_metrics_hub, "Передает метрики")
-Rel(vid_mon_anal, notification, "Отправляет уведомления по анализу видеопотоков")
+Rel(vid_mon_anal, farm_broker, "Передает метрики и уведомления")
 
-Rel(edge_control, edge_device, "Управляет устройствами\nсобирает метрики")
-Rel(edge_control, notification, "Отправляет уведомления по edge-устройствам")
-Rel(edge_control, local_metrics_hub, "Передает метрики")
+Rel(edge_control, edge_device, "Управляет устройствами")
+Rel(edge_device, farm_broker, "Передает метрики")
+Rel(edge_control, farm_broker, "Передает уведомления")
 
-Rel(notification, operator, "Отправляет уведомления по edge-устройствам, анализу видео")
+Rel(farm_notification, operator, "Отправляет уведомления по edge-устройствам, анализу видео")
+Rel(farm_notification, farm_broker, "Получает уведомления для отправки")
 
+Rel(scheduling, farm_broker, "Отправляет события об изменении расписания")
 ' Между фермой и цетральным сервером
-Rel(notification, global_notification_hub, "Отправляет уведомления по edge-устройствам, анализу видео")
-Rel(local_metrics_hub, global_metrics_hub, "Отправляет метрики по edge-устройствам, анализу видео")
+Rel(farm_broker, global_broker, "Отправляет уведомления и метрики, анализу видео")
+
+Rel(global_notification, duty, "Отправляеты уведомления")
+Rel(duty, global_metrics, "Следят за показателями с ферм")
+Rel(analyst, global_metrics, "Проводит аналитику полученных данных от ферм")
+Rel(global_notification, operator, "Отправляет уведомления")
+
+Rel(duty, scheduling, "Задает расписание")
 
 
-Rel(duty, global_notification_hub, "Получают уведомления")
-Rel(duty, global_metrics_hub, "Следят за показателями с ферм")
-Rel(analyst, global_metrics_hub, "Проводит аналитику полученных данных от ферм")
+' В пределах центрального сервера
+Rel(global_notification, global_broker, "Обрабатывает уведомления")
+Rel(global_metrics, global_broker, "Обрабатывает метрики")
 
 ' Между центральным сервером и общей системой предприятия
-Rel(global_metrics_hub, existing_system, "Передает метрики в имеющиеся хранилища")
-Rel(global_notification_hub, existing_system, "Передает уведомления в имеющиеся системы")
+Rel(global_broker, existing_system, "Передает метрики в имеющиеся хранилища")
 
 @enduml

@@ -10,24 +10,22 @@
 ' Определяем акторов
 ' Для отправки метрик с iot можно использовать MQTT. А значит можно слать сразу в брокер. Переделать выделив отдельно брокер в c4 и c3
 Enterprise_Boundary(farm, "Ферма"){
+    System(farm_broker, "RabbitMQ", "Брокер")
     Person(operator, "Оператор", "Сотрудник на ферме")
     System_Boundary(edge_control, "Управление edge-устройствами"){
-        Container(edge_control_api, "Настройка расписания", "Python FastAPI", "Для управления расписанием")
-        Container(edge_control_worker, "Воркер системы управления", "go", "Читает")
-        ContainerDb(postgres, "БД")
+        Container(edge_control_api, "API", "Go", "управление edge-устройствами")
     }
     System(edge_device, "Edge-устройство", "Различные IoT датчики и пульты управления оборудованием")
     System(vid_mon, "Видеорегистратор", "Точка сбора видеопотоков с камер")
     System_Boundary(vid_mon_anal, "Анализ данных с видеомониторинга"){
-        Container(ai, "Видеоаналитика ИИ", "Python FastAPI", "Анализ видеопотоков с помощью ИИ")
+        ' TODO: выбрать технологии позже
+        Container(ai, "Видеоаналитика ИИ", "Python FastAPI", "API для видеопотоков, Анализ видеопотоков с помощью ИИ")
     }
     System_Boundary(notification, "Отправка уведомлений"){
-        Container(notification_rabbit, "Сбор уведомлений", "AMQP", "Сбор уведомлений")
-        Container(notification_worker, "Воркер уведомлений", "Go", "Читает данные из брокера и перенаправляет нужному адресату")
+        Container(notification_worker, "Воркер уведомлений", "Python", "Читает данные из брокера и перенаправляет нужному адресату. Отправлляет СМС.")
     }
-    System_Boundary(local_metrics_hub, "Точка сбора метрик"){
-        Container(metrics_rabbit, "Сбор метрик", "AMQP", "Сбор уведомлений")
-        Container(metrics_worker, "Воркер уведомлений", "Go", "Читает данные из брокера и перенаправляет нужному адресату")
+    System_Boundary(scheduler, "Расписание"){
+        Container(scheduler_api, "API расписаний", "Python FastAPI", "API для управления расписанием")
     }
 }
 
@@ -36,10 +34,15 @@ Enterprise_Boundary(farm, "Ферма"){
 
 ' В пределах фермы
 Rel(ai, vid_mon, "Получает видеопотоки", "ONVIF")
-Rel(ai, notification_rabbit, "Отправляет события", "AMQP")
-Rel(notification_worker, notification_rabbit, "Читает события", "AMQP")
-Rel(ai, metrics_rabbit, "Отправляет метрики", "AMQP")
-Rel(metrics_worker, metrics_rabbit, "Читает метрики", "AMQP")
+Rel(ai, farm_broker, "Отправляет события и метрики, Читает изменения в расписании", "AMQP")
+
+Rel(notification_worker, farm_broker, "Читает события и метрики", "AMQP")
+Rel(notification_worker, operator, "Отправляет уведомления", "HTTPS (Websocket)")
+
+Rel(edge_control_api, farm_broker, "Отправляет события, следит за изменением расписания", "AMQP")
+Rel(edge_control_api, edge_device, "Отправляет управляющие команды", "HTTPS")
+
+
 ' Между фермой и цетральным сервером
 
 
