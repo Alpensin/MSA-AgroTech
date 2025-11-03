@@ -76,9 +76,9 @@ Enterprise_Boundary(center, "Центральный узел") {
 
 ' Внутренние связи в контейнерах
 
-' Внутренние связи edge_control_system
-' Внутри компонентов
-' device_manager
+' Связи edge_control_system
+'   Внутри компонентов
+'       device_manager
 Rel(device_service, device_repository, "Вызывает методы")
 Rel(device_repository, devices_table, "Читает/пишет данные")
 Rel(device_service, status_repository, "Вызывает методы")
@@ -86,21 +86,27 @@ Rel(status_repository, status_table, "Читает/пишет данные")
 Rel(health_checker, device_service, "Обновляет статус")
 Rel(device_service, schedule_repository, "Читает/обновляет расписание")
 
-' status_monitor
+'       status_monitor
 Rel(metrics_collector, threshold_checker, "Передает метрики в")
 Rel(threshold_checker, alert_detector, "Активирует")
 
-' schedule_handler
+'       schedule_handler
 Rel(schedule_consumer, schedule_processor, "Передает расписание в")
 Rel(schedule_processor, command_generator, "Передает задачу на исполнение")
 
-' command_dispatcher
+'       command_dispatcher
 Rel(command_service, protocol_adapter, "Использует")
 Rel(protocol_adapter, http_client, "Вызывает")
 
-' Между компонентами
+'       Между компонентами
 
 Rel(schedule_repository, schedule_table, "Читает/пишет данные")
 Rel(command_generator, command_service, "Передает команду")
 Rel(threshold_checker, device_service, "Получает информацию об устройствах")
 Rel(schedule_processor, device_service, "Обновляет расписание")
+
+'       Между контейнерами
+
+Rel(alert_detector, farm_broker, "Передает события")
+Rel(schedule_consumer, farm_broker, "Читает события")
+Rel(http_client, edge_device, "Устанавливает соединение")
