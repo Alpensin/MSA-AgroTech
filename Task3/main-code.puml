@@ -1,0 +1,106 @@
+@startuml main code diagram AgroTech
+
+' Задаем стиль
+!NEW_C4_STYLE=1
+!theme C4_violet from ../C4-PlantUML/themes
+
+' Импортируем элементы
+!include ../C4-PlantUML/C4_Component.puml
+
+' Определяем акторов
+
+Enterprise_Boundary(farm, "Ферма") {
+    System_Boundary(edge_control_system, "Управление edge-устройствами"){
+      Container_Boundary(edge_control_components, "API управления edge-устройствами") {
+        Container_Boundary(device_manager, "Менеджер устройств", "Go", "Регистрация и отслеживание устройств") {
+            Component(device_service, "DeviceService", "Бизнес-логика устройств")
+            Component(device_repository, "DeviceRepository", "Доступ к данным")
+            Component(status_repository, "StatusRepository", "Доступ к данным")
+            Component(schedule_repository, "ScheduleRepository", "Доступ к данным")
+            Component(health_checker, "HealthChecker", "Проверка состояния")
+        }
+        Container_Boundary(command_dispatcher, "Диспетчер команд", "Go", "Отправка управляющих команд") {
+            Component(command_service, "CommandService", "Обработка команд")
+            Component(protocol_adapter, "ProtocolAdapter", "Go interface", "Адаптер протоколов")
+            Component(http_client, "HTTPClient", "Go client", "HTTP клиент")
+        }
+        Container_Boundary(status_monitor, "Монитор статуса", "Go", "Отслеживание состояния устройств") {
+            Component(metrics_collector, "MetricsCollector", "Сбор метрик")
+            Component(threshold_checker, "ThresholdChecker", "Проверка порогов")
+            Component(alert_detector, "AlertDetector", "Детектор алертов")
+        }
+        Container_Boundary(schedule_handler, "Обработчик расписаний", "Go", "Обработка изменений расписания") {
+            Component(schedule_consumer, "ScheduleConsumer", "Чтение расписаний")
+            Component(schedule_processor, "ScheduleProcessor", "Обработка расписаний")
+            Component(command_generator, "CommandGenerator", "Генерация команд")
+        }
+        }
+        Container_Boundary(edge_control_db, "Database Layer") {
+            Component(devices_table, "devices", "Устройства")
+            Component(status_table, "status", "Статусы")
+            Component(schedule_table, "schedule", "Расписание")
+        }
+    }
+
+    Container_Boundary(vid_mon_anal, "Видеоаналитика ИИ") {
+        Component(stream_interface, "Прием видеопотоков", "C/C++", "Прием видеопотоков и первичная обработка")
+        Component(stream_processor, "Процессор видеопотоков", "C/C++", "Обработка видеопотоков")
+        Component(object_detector, "Детектор объектов", "Python/C++", "Обнаружение объектов и аномалий")
+        Component(event_generator, "Генератор событий", "Python", "Создание событий на основе анализа")
+    }
+
+    Container_Boundary(notification, "Обработчик уведомлений") {
+        Component(message_router, "Роутер сообщений", "Python", "Маршрутизация уведомлений. Логика повторной отправки")
+        Component(websocket_handler, "WebSocket обработчик", "Python", "Управление WebSocket соединениями")
+        Component(notification_reader, "Сборщик уведомлений", "Python", "Чтение уведомлений")
+    }
+
+    Container_Boundary(scheduler_components, "API расписаний") {
+        Component(schedule_manager, "Менеджер расписаний", "Python FastAPI", "Управление расписаниями")
+        Component(event_scheduler, "Планировщик событий", "Python", "Планирование событий")
+        Component(notification_publisher, "Публикатор уведомлений", "Python", "Публикация изменений расписания")
+    }
+
+    System(farm_sms, "СМС-шлюз", "Служит для отправки уведомлений")
+    System(farm_broker, "RabbitMQ", "Точка сбора метрик, событий и уведомлений")
+    Person(operator, "Оператор", "Сотрудник на ферме")
+    System_Ext(edge_device, "Edge-устройство", "Различные IoT датчики и пульты управления оборудованием")
+    System_Ext(vid_mon, "Система видеорегистрации", "Точка сбора видеопотоков с камер")
+}
+
+Enterprise_Boundary(center, "Центральный узел") {
+    Person(duty, "Дежурная смена", "Состоит из отдельного персонала или дежурных админов и разработчиков")
+    System(global_broker, "Kafka", "Точка сбора метрик и уведомлений")
+    System(apm, "APM-система", "Собирает метрики, фиксирует аварии, уведомляет")
+}
+
+' Внутренние связи в контейнерах
+
+' Внутренние связи edge_control_system
+' Внутри компонентов
+' device_manager
+Rel(device_service, device_repository, "Вызывает методы")
+Rel(device_repository, devices_table, "Читает/пишет данные")
+Rel(device_service, status_repository, "Вызывает методы")
+Rel(status_repository, status_table, "Читает/пишет данные")
+Rel(health_checker, device_service, "Обновляет статус")
+Rel(device_service, schedule_repository, "Читает/обновляет расписание")
+
+' status_monitor
+Rel(metrics_collector, threshold_checker, "Передает метрики в")
+Rel(threshold_checker, alert_detector, "Активирует")
+
+' schedule_handler
+Rel(schedule_consumer, schedule_processor, "Передает расписание в")
+Rel(schedule_processor, command_generator, "Передает задачу на исполнение")
+
+' command_dispatcher
+Rel(command_service, protocol_adapter, "Использует")
+Rel(protocol_adapter, http_client, "Вызывает")
+
+' Между компонентами
+
+Rel(schedule_repository, schedule_table, "Читает/пишет данные")
+Rel(command_generator, command_service, "Передает команду")
+Rel(threshold_checker, device_service, "Получает информацию об устройствах")
+Rel(schedule_processor, device_service, "Обновляет расписание")
