@@ -21,8 +21,8 @@ Enterprise_Boundary(farm, "Ферма") {
         }
         Container_Boundary(command_dispatcher, "Диспетчер команд", "Go", "Отправка управляющих команд") {
             Component(command_service, "CommandService", "Обработка команд")
-            Component(protocol_adapter, "ProtocolAdapter", "Go interface", "Адаптер протоколов")
-            Component(http_client, "HTTPClient", "Go client", "HTTP клиент")
+            Component(protocol_adapter, "ProtocolAdapter", "Адаптер протоколов", "Go interface")
+            Component(http_client_cd, "HTTPClient", "HTTP клиент", "Go client")
         }
         Container_Boundary(status_monitor, "Монитор статуса", "Go", "Отслеживание состояния устройств") {
             Component(metrics_collector, "MetricsCollector", "Сбор метрик")
@@ -43,22 +43,48 @@ Enterprise_Boundary(farm, "Ферма") {
     }
 
     Container_Boundary(vid_mon_anal, "Видеоаналитика ИИ") {
-        Component(stream_interface, "Прием видеопотоков", "C/C++", "Прием видеопотоков и первичная обработка")
-        Component(stream_processor, "Процессор видеопотоков", "C/C++", "Обработка видеопотоков")
-        Component(object_detector, "Детектор объектов", "Python/C++", "Обнаружение объектов и аномалий")
-        Component(event_generator, "Генератор событий", "Python", "Создание событий на основе анализа")
+        Container_Boundary(stream_interface, "Прием видеопотоков", "C/C++") {
+            Component(stream_receiver, "StreamReceiver", "Прием видеопотоков", "C++ class")
+            Component(frame_decoder, "FrameDecoder", "Декодирование кадров", "C++ class")
+        }
+        Container_Boundary(stream_processor, "Процессор видеопотоков", "C/C++", "Обработка видеопотоков") {
+            Component(frame_processor, "FrameProcessor", "Обработка кадров", "C++ class")
+        }
+        Container_Boundary(object_detector, "Детектор объектов", "Python", "Обнаружение объектов и аномалий") {
+            Component(neural_network, "NeuralNetwork", "Нейросетевая модель", "Python class")
+            Component(anomaly_detector, "AnomalyDetector", "Детектор аномалий", "Python class")
+        }
+        Container_Boundary(event_generator, "Генератор событий", "Python", "Создание событий на основе анализа") {
+            Component(event_factory, "EventFactory", "Создание событий", "Python class")
+            Component(amqp_producer_vid, "AMQPPublisher", "Публикатор в RabbitMQ", "Python class")
+        }
     }
 
     Container_Boundary(notification, "Обработчик уведомлений") {
-        Component(message_router, "Роутер сообщений", "Python", "Маршрутизация уведомлений. Логика повторной отправки")
-        Component(websocket_handler, "WebSocket обработчик", "Python", "Управление WebSocket соединениями")
-        Component(notification_reader, "Сборщик уведомлений", "Python", "Чтение уведомлений")
+        Container_Boundary(message_router, "Роутер сообщений", "Python", "Маршрутизация уведомлений. Логика повторной отправки") {
+            Component(routing_service, "RoutingService", "Управление отправкой", "Python class")
+            Component(gateway_adapter, "GatewayAdapter", "Адаптер протоколов", "Python class")
+            Component(http_client_notify, "HTTPClient", "HTTP клиент", "Python class")
+        }
+        Container_Boundary(websocket_handler, "WebSocket сервер", "Python", "Управление WebSocket соединениями") {
+            Component(connection_manager, "ConnectionManager", "Python class", "Менеджер соединений")
+            Component(session_store, "SessionStore", "Python class", "Хранилище сессий")
+        }
+        Container_Boundary(notification_reader, "Сборщик уведомлений", "Python", "Чтение уведомлений") {
+            Component(notification_consumer, "NotificationConsumer", "RabbitMQ consumer",  "Консьюмер расписаний")
+            Component(notification_service, "NotificationService", "Python service", "Сервис расписаний")
+        }
     }
 
-    Container_Boundary(scheduler_components, "API расписаний") {
-        Component(schedule_manager, "Менеджер расписаний", "Python FastAPI", "Управление расписаниями")
-        Component(event_scheduler, "Планировщик событий", "Python", "Планирование событий")
-        Component(notification_publisher, "Публикатор уведомлений", "Python", "Публикация изменений расписания")
+    Container_Boundary(schedule_api, "API расписаний") {
+        Container_Boundary(schedule_manager, "Менеджер расписаний", "Python FastAPI", "Управление расписаниями") {
+            Component(schedule_controller, "ScheduleController", "FastAPI router", "Контроллер расписаний")
+            Component(schedule_service, "ScheduleService", "Python service", "Сервис расписаний")
+        }
+        Container_Boundary(notification_publisher, "Публикатор уведомлений", "Python", "Публикация изменений расписания") {
+            Component(message_generator, "MessageGenerator", "Python service", "Генератор сообщений")
+            Component(amqp_producer_sched, "AMQPProducer", "Python library", "Продюсер AMQP")
+        }
     }
 
     System(farm_sms, "СМС-шлюз", "Служит для отправки уведомлений")
@@ -96,7 +122,7 @@ Rel(schedule_processor, command_generator, "Передает задачу на �
 
 '       command_dispatcher
 Rel(command_service, protocol_adapter, "Использует")
-Rel(protocol_adapter, http_client, "Вызывает")
+Rel(protocol_adapter, http_client_cd, "Вызывает")z
 
 '       Между компонентами
 
@@ -109,4 +135,75 @@ Rel(schedule_processor, device_service, "Обновляет расписание
 
 Rel(alert_detector, farm_broker, "Передает события")
 Rel(schedule_consumer, farm_broker, "Читает события")
-Rel(http_client, edge_device, "Устанавливает соединение")
+Rel(http_client_cd, edge_device, "Устанавливает соединение")
+
+' Связи vid_mon_anal
+'   Внутри компонентов
+'       stream_interface
+
+Rel(stream_receiver, frame_decoder, "Передает кадры в")
+
+'       object_detector
+Rel(anomaly_detector, neural_network, "Анализирует поведение")
+'       event_generator
+Rel(event_factory, amqp_producer_vid, "Публикует через")
+
+'       Между компонентами
+
+Rel(frame_decoder, frame_processor, "Передает кадры в")
+Rel(frame_processor, anomaly_detector, "Передает кадры в")
+Rel(anomaly_detector, event_factory, "Инициализирует создание события")
+
+'       Между контейнерами
+Rel(amqp_producer_vid, farm_broker, "Публикует события")
+Rel(stream_receiver, vid_mon, "Получает видеопотоки", "ONVIF")
+
+
+' Связи notification
+'   Внутри компонентов
+'       message_router
+
+Rel(routing_service, gateway_adapter, "Использует")
+Rel(gateway_adapter, http_client_notify, "Вызывает")
+
+'       websocket_handler
+Rel(connection_manager, session_store, "Сохраняет сессии в")
+
+'       notification_reader
+Rel(notification_service, notification_consumer, "Использует")
+
+'       Между компонентами
+Rel(routing_service, connection_manager, "Вызывает")
+Rel(notification_service, routing_service, "Вызывает")
+
+'       Между контейнерами
+Rel(notification_consumer, farm_broker, "Читает события")
+Rel(http_client_notify, farm_sms, "Уведомляет с помощью")
+Rel(http_client_notify, operator, "Уведомляет")
+Rel(farm_sms, operator, "Отправляет уведомления", "SMS")
+
+'       Между фермой и центральным узлом
+Rel(farm_sms, duty, "Отправляет уведомления", "SMS")
+
+
+' Связи schedule_api
+'   Внутри компонентов
+'       schedule_manager
+
+Rel(schedule_controller, schedule_service, "Вызывает")
+
+'       notification_publisher
+Rel(message_generator, amqp_producer_sched, "Вызывает")
+
+'       Между компонентами
+Rel(schedule_service, message_generator, "Вызывает")
+
+'       Между контейнерами
+Rel(duty, schedule_controller, "Управляет расписанием", "HTTPS")
+Rel(amqp_producer_sched, farm_broker, "Отправляет изменения расписания", "AMQP")
+
+
+' Глобальное между фермой и центральным узлом
+Rel(farm_broker, global_broker, "Синхронизирует события", "AMQP")
+Rel(apm, global_broker, "Собирает и обрабатывает уведомления и метрики")
+Rel(apm, duty, "Отправляет уведомления")

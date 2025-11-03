@@ -28,13 +28,12 @@ Enterprise_Boundary(farm, "Ферма") {
 
     Container_Boundary(notification, "Обработчик уведомлений") {
         Component(message_router, "Роутер сообщений", "Python", "Маршрутизация уведомлений. Логика повторной отправки")
-        Component(websocket_handler, "WebSocket обработчик", "Python", "Управление WebSocket соединениями")
+        Component(websocket_handler, "WebSocket сервер", "Python", "Управление WebSocket соединениями")
         Component(notification_reader, "Сборщик уведомлений", "Python", "Чтение уведомлений")
     }
 
     Container_Boundary(scheduler_components, "API расписаний") {
         Component(schedule_manager, "Менеджер расписаний", "Python FastAPI", "Управление расписаниями")
-        Component(event_scheduler, "Планировщик событий", "Python", "Планирование событий")
         Component(notification_publisher, "Публикатор уведомлений", "Python", "Публикация изменений расписания")
     }
 
@@ -67,8 +66,7 @@ Rel(message_router, farm_sms, "Отправляет уведомления cре
 Rel(message_router, websocket_handler, "Отправляет уведомления")
 Rel(notification_reader, message_router, "Предоставляет сообщения")
 
-Rel(schedule_manager, event_scheduler, "Создает события")
-Rel(event_scheduler, notification_publisher, "Публикует изменения")
+Rel(schedule_manager, notification_publisher, "Публикует изменения")
 
 Rel(farm_sms, operator, "Отправляет уведомления", "SMS")
 
