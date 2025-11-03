@@ -14,24 +14,24 @@ Enterprise_Boundary(farm, "Ферма"){
     Person(operator, "Оператор", "Сотрудник на ферме")
     System_Boundary(edge_control, "Управление edge-устройствами"){
         Container(edge_control_api, "API", "Go", "управление edge-устройствами")
+        ContainerDb(edge_control_db, "СУБД", "Postgres")
     }
     System_Ext(edge_device, "Edge-устройство", "Различные IoT датчики и пульты управления оборудованием")
     System_Ext(vid_mon, "Система видеорегистрации", "Точка сбора видеопотоков с камер")
     System_Boundary(vid_mon_anal, "Анализ данных с видеомониторинга"){
-        ' TODO: выбрать технологии позже
-        Container(ai, "Видеоаналитика ИИ", "Python FastAPI", "API для видеопотоков, Анализ видеопотоков с помощью ИИ")
+        Container(ai, "Видеоаналитика ИИ", "Python/C/C++", "API для видеопотоков, Анализ видеопотоков с помощью ИИ")
     }
     System_Boundary(notification, "Отправка уведомлений"){
-        Container(notification_worker, "Воркер уведомлений", "Python", "Читает уведомления из брокера и перенаправляет нужному адресату. Отправлляет СМС.")
+        Container(notification_sender, "Обработчик уведомлений", "Python", "Читает уведомления из брокера и перенаправляет нужному адресату. Отправлляет СМС.")
     }
     System_Boundary(scheduler, "Расписание"){
         Container(scheduler_api, "API расписаний", "Python FastAPI", "API для управления расписанием")
     }
+    System(farm_sms, "СМС-шлюз", "Служит для отправки уведомлений")
 
 }
 Enterprise_Boundary(center, "Центральный узел") {
     Person(duty, "Дежурная смена", "Состоит из отдельного персонала или дежурных админов и разработчиков")
-    Person(analyst, "Аналитик данных")
     System(global_broker, "Kafka", "Точка сбора метрик и уведомлений")
     System(apm, "APM-система", "Собирает метрики, фиксирует аварии, уведомляет")
 
@@ -44,10 +44,14 @@ System_Ext(existing_system, "Общая система предприятия")
 Rel(ai, vid_mon, "Получает видеопотоки", "ONVIF")
 Rel(ai, farm_broker, "Отправляет события и метрики, Читает изменения в расписании", "AMQP")
 
-Rel(notification_worker, farm_broker, "Читает события и метрики", "AMQP")
-Rel(notification_worker, operator, "Отправляет уведомления", "HTTPS (Websocket)")
+Rel(notification_sender, farm_broker, "Читает события и метрики", "AMQP")
+Rel(notification_sender, operator, "Отправляет уведомления", "HTTPS (Websocket)")
+Rel(notification_sender, farm_sms, "Отправляет уведомления средством", "HTTPS")
+Rel(farm_sms, operator, "Отправляет уведомления по edge-устройствам, анализу видео", "SMS")
 
 Rel(edge_control_api, farm_broker, "Отправляет события, следит за изменением расписания", "AMQP")
+Rel(edge_control_api, edge_control_db, "Хранит информацию об edge-устройствах")
+
 Rel(edge_control_api, edge_device, "Отправляет управляющие команды", "HTTPS")
 Rel(duty, scheduler_api, "Управляет расписанием")
 Rel(scheduler_api, farm_broker, "Отправляет изменения в расписании", "AMQP")
@@ -55,11 +59,10 @@ Rel(scheduler_api, farm_broker, "Отправляет изменения в ра
 
 ' Между фермой и цетральным сервером
 
-Rel(farm_broker, global_broker, "Отправляет все события в глобальный брокер", "AMQP")
+Rel(farm_broker, global_broker, "Синхронизирует события", "AMQP")
 Rel(apm, global_broker, "Собирает и обрабатывает уведомления и метрики")
 Rel(apm, duty, "Отправляет уведомления")
-
-Rel(analyst, apm, "Проводит аналитику полученных данных от ферм")
+Rel(farm_sms, duty, "Отправляет уведомления по edge-устройствам, анализу видео", "SMS")
 
 ' Между центральным сервером и общей системой предприятия
 Rel(global_broker, existing_system, "Передает метрики и уведомления в имеющиеся хранилища")

@@ -1,0 +1,98 @@
+@startuml main component diagram AgroTech
+
+' Задаем стиль
+!NEW_C4_STYLE=1
+!theme C4_violet from ../C4-PlantUML/themes
+
+' Импортируем элементы
+!include ../C4-PlantUML/C4_Component.puml
+
+' Определяем границы систем
+Enterprise_Boundary(farm, "Ферма") {
+    System_Boundary(edge_control_system, "Управление edge-устройствами"){
+      Container_Boundary(edge_control_components, "API управления edge-устройствами") {
+        Component(device_manager, "Менеджер устройств", "Go", "Регистрация и отслеживание устройств")
+        Component(command_dispatcher, "Диспетчер команд", "Go", "Отправка управляющих команд")
+        Component(status_monitor, "Монитор статуса", "Go", "Отслеживание состояния устройств")
+        Component(schedule_handler, "Обработчик расписаний", "Go", "Обработка изменений расписания")
+        }
+        ContainerDb(edge_control_db, "СУБД", "Postgres")
+    }
+
+    Container_Boundary(vid_mon_anal, "Видеоаналитика ИИ") {
+        Component(stream_interface, "Прием видеопотоков", "C/C++", "Прием видеопотоков и первичная обработка")
+        Component(stream_processor, "Процессор видеопотоков", "C/C++", "Обработка видеопотоков")
+        Component(object_detector, "Детектор объектов", "Python/C++", "Обнаружение объектов и аномалий")
+        Component(event_generator, "Генератор событий", "Python", "Создание событий на основе анализа")
+    }
+
+    Container_Boundary(notification, "Обработчик уведомлений") {
+        Component(message_router, "Роутер сообщений", "Python", "Маршрутизация уведомлений. Логика повторной отправки")
+        Component(websocket_handler, "WebSocket обработчик", "Python", "Управление WebSocket соединениями")
+        Component(notification_reader, "Сборщик уведомлений", "Python", "Чтение уведомлений")
+    }
+
+    Container_Boundary(scheduler_components, "API расписаний") {
+        Component(schedule_manager, "Менеджер расписаний", "Python FastAPI", "Управление расписаниями")
+        Component(event_scheduler, "Планировщик событий", "Python", "Планирование событий")
+        Component(notification_publisher, "Публикатор уведомлений", "Python", "Публикация изменений расписания")
+    }
+
+    System(farm_sms, "СМС-шлюз", "Служит для отправки уведомлений")
+    System(farm_broker, "RabbitMQ", "Точка сбора метрик, событий и уведомлений")
+    Person(operator, "Оператор", "Сотрудник на ферме")
+    System_Ext(edge_device, "Edge-устройство", "Различные IoT датчики и пульты управления оборудованием")
+    System_Ext(vid_mon, "Система видеорегистрации", "Точка сбора видеопотоков с камер")
+}
+
+Enterprise_Boundary(center, "Центральный узел") {
+    Person(duty, "Дежурная смена", "Состоит из отдельного персонала или дежурных админов и разработчиков")
+    System(global_broker, "Kafka", "Точка сбора метрик и уведомлений")
+    System(apm, "APM-система", "Собирает метрики, фиксирует аварии, уведомляет")
+}
+
+System_Ext(existing_system, "Общая система предприятия")
+
+' Внутренние связи в контейнерах
+Rel(device_manager, command_dispatcher, "Управляет")
+Rel(device_manager, edge_control_db, "Хранит данные")
+Rel(status_monitor, device_manager, "Обновляет статус")
+Rel(schedule_handler, device_manager, "Передает обновления")
+
+Rel(stream_interface, stream_processor, "Передает кадры")
+Rel(stream_processor, object_detector, "Передает кадры")
+Rel(object_detector, event_generator, "Сообщает о событиях")
+
+Rel(message_router, farm_sms, "Отправляет уведомления cредством", "HTTPS")
+Rel(message_router, websocket_handler, "Отправляет уведомления")
+Rel(notification_reader, message_router, "Предоставляет сообщения")
+
+Rel(schedule_manager, event_scheduler, "Создает события")
+Rel(event_scheduler, notification_publisher, "Публикует изменения")
+
+Rel(farm_sms, operator, "Отправляет уведомления", "SMS")
+
+' Внешние связи между контейнерами и системами
+Rel(stream_interface, vid_mon, "Получает видеопотоки", "ONVIF")
+Rel(event_generator, farm_broker, "Отправляет события", "AMQP")
+
+Rel(notification_reader, farm_broker, "Читает события", "AMQP")
+Rel(websocket_handler, operator, "Отправляет уведомления", "HTTPS (Websocket)")
+
+Rel(status_monitor, farm_broker, "Отправляет события", "AMQP")
+Rel(schedule_handler, farm_broker, "Читает расписания", "AMQP")
+Rel(command_dispatcher, edge_device, "Отправляет управляющие команды", "HTTPS")
+
+Rel(duty, schedule_manager, "Управляет расписанием", "HTTPS")
+Rel(notification_publisher, farm_broker, "Отправляет изменения расписания", "AMQP")
+Rel(farm_sms, duty, "Отправляет уведомления", "SMS")
+
+
+' Межсистемные связи
+Rel(farm_broker, global_broker, "Синхронизирует события", "AMQP")
+Rel(apm, global_broker, "Собирает данные", "Kafka JMX")
+Rel(apm, duty, "Отправляет уведомления", "HTTPS/Email/SMS")
+
+Rel(global_broker, existing_system, "Передает метрики и уведомления", "REST/AMQP")
+
+@enduml
