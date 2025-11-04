@@ -32,11 +32,6 @@ Enterprise_Boundary(farm, "Ферма") {
         Component(notification_reader, "Сборщик уведомлений", "Python", "Чтение уведомлений")
     }
 
-    Container_Boundary(schedule_components, "API расписаний") {
-        Component(schedule_manager, "Менеджер расписаний", "Python FastAPI", "Управление расписаниями")
-        Component(schedule_publisher, "Публикатор уведомлений", "Python", "Публикация изменений расписания")
-    }
-
     System(farm_sms, "СМС-шлюз", "Служит для отправки уведомлений")
     System(farm_broker, "RabbitMQ", "Точка сбора метрик, событий и уведомлений")
     Person(operator, "Оператор", "Сотрудник на ферме")
@@ -48,6 +43,11 @@ Enterprise_Boundary(center, "Центральный узел") {
     Person(duty, "Дежурная смена", "Состоит из отдельного персонала или дежурных админов и разработчиков")
     System(global_broker, "Kafka", "Точка сбора метрик и уведомлений")
     System(apm, "APM-система", "Собирает метрики, фиксирует аварии, уведомляет")
+
+    Container_Boundary(schedule_components, "API расписаний") {
+        Component(schedule_manager, "Менеджер расписаний", "Python FastAPI", "Управление расписаниями")
+        Component(schedule_publisher, "Публикатор уведомлений", "Python", "Публикация изменений расписания")
+    }
 }
 
 System_Ext(existing_system, "Общая система предприятия")
@@ -82,11 +82,11 @@ Rel(schedule_handler, farm_broker, "Читает расписания", "AMQP")
 Rel(command_dispatcher, edge_device, "Отправляет управляющие команды", "HTTPS")
 
 Rel(duty, schedule_manager, "Управляет расписанием", "HTTPS")
-Rel(schedule_publisher, farm_broker, "Отправляет изменения расписания", "AMQP")
 Rel(farm_sms, duty, "Отправляет уведомления", "SMS")
 
 
 ' Межсистемные связи
+Rel(schedule_publisher, global_broker, "Отправляет изменения расписания")
 Rel(farm_broker, global_broker, "Синхронизирует события", "AMQP")
 Rel(apm, global_broker, "Собирает данные", "Kafka JMX")
 Rel(apm, duty, "Отправляет уведомления", "HTTPS/Email/SMS")

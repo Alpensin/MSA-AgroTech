@@ -76,17 +76,6 @@ Enterprise_Boundary(farm, "Ферма") {
         }
     }
 
-    Container_Boundary(schedule_api, "API расписаний") {
-        Container_Boundary(schedule_manager, "Менеджер расписаний", "Python FastAPI", "Управление расписаниями") {
-            Component(schedule_controller, "ScheduleController", "FastAPI router", "Контроллер расписаний")
-            Component(schedule_service, "ScheduleService", "Python service", "Сервис расписаний")
-        }
-        Container_Boundary(schedule_publisher, "Публикатор уведомлений", "Python", "Публикация изменений расписания") {
-            Component(message_generator, "MessageGenerator", "Python service", "Генератор сообщений")
-            Component(amqp_producer_sched, "AMQPProducer", "Python library", "Продюсер AMQP")
-        }
-    }
-
     System(farm_sms, "СМС-шлюз", "Служит для отправки уведомлений")
     System(farm_broker, "RabbitMQ", "Точка сбора метрик, событий и уведомлений")
     Person(operator, "Оператор", "Сотрудник на ферме")
@@ -98,6 +87,17 @@ Enterprise_Boundary(center, "Центральный узел") {
     Person(duty, "Дежурная смена", "Состоит из отдельного персонала или дежурных админов и разработчиков")
     System(global_broker, "Kafka", "Точка сбора метрик и уведомлений")
     System(apm, "APM-система", "Собирает метрики, фиксирует аварии, уведомляет")
+
+    Container_Boundary(schedule_api, "API расписаний") {
+        Container_Boundary(schedule_manager, "Менеджер расписаний", "Python FastAPI", "Управление расписаниями") {
+            Component(schedule_controller, "ScheduleController", "FastAPI router", "Контроллер расписаний")
+            Component(schedule_service, "ScheduleService", "Python service", "Сервис расписаний")
+        }
+        Container_Boundary(schedule_publisher, "Публикатор уведомлений", "Python", "Публикация изменений расписания") {
+            Component(message_generator, "MessageGenerator", "Python service", "Генератор сообщений")
+            Component(kafka_publisher, "KafkaPublisher", "Python library", "Паблишер Kafka")
+        }
+    }
 }
 
 ' Внутренние связи в контейнерах
@@ -193,17 +193,17 @@ Rel(farm_sms, duty, "Отправляет уведомления", "SMS")
 Rel(schedule_controller, schedule_service, "Вызывает")
 
 '       schedule_publisher
-Rel(message_generator, amqp_producer_sched, "Вызывает")
+Rel(message_generator, kafka_publisher, "Вызывает")
 
 '       Между компонентами
 Rel(schedule_service, message_generator, "Вызывает")
 
 '       Между контейнерами
 Rel(duty, schedule_controller, "Управляет расписанием", "HTTPS")
-Rel(amqp_producer_sched, farm_broker, "Отправляет изменения расписания", "AMQP")
 
 
 ' Глобальное между фермой и центральным узлом
+Rel(kafka_publisher, global_broker, "Отправляет изменения расписания")
 Rel(farm_broker, global_broker, "Синхронизирует события", "AMQP")
 Rel(apm, global_broker, "Собирает и обрабатывает уведомления и метрики")
 Rel(apm, duty, "Отправляет уведомления")

@@ -24,9 +24,7 @@ Enterprise_Boundary(farm, "Ферма"){
     System_Boundary(notification, "Отправка уведомлений"){
         Container(notification_sender, "Обработчик уведомлений", "Python", "Читает уведомления из брокера и перенаправляет нужному адресату. Отправлляет СМС.")
     }
-    System_Boundary(scheduler, "Расписание"){
-        Container(schedule_api, "API расписаний", "Python FastAPI", "API для управления расписанием")
-    }
+
     System(farm_sms, "СМС-шлюз", "Служит для отправки уведомлений")
 
 }
@@ -34,6 +32,9 @@ Enterprise_Boundary(center, "Центральный узел") {
     Person(duty, "Дежурная смена", "Состоит из отдельного персонала или дежурных админов и разработчиков")
     System(global_broker, "Kafka", "Точка сбора метрик и уведомлений")
     System(apm, "APM-система", "Собирает метрики, фиксирует аварии, уведомляет")
+    System_Boundary(scheduler, "Расписание"){
+        Container(schedule_api, "API расписаний", "Python FastAPI", "API для управления расписанием")
+    }
 
 }
 System_Ext(existing_system, "Общая система предприятия")
@@ -54,7 +55,6 @@ Rel(edge_control_api, edge_control_db, "Хранит информацию об e
 
 Rel(edge_control_api, edge_device, "Отправляет управляющие команды", "HTTPS")
 Rel(duty, schedule_api, "Управляет расписанием")
-Rel(schedule_api, farm_broker, "Отправляет изменения в расписании", "AMQP")
 
 
 ' Между фермой и цетральным сервером
@@ -63,6 +63,7 @@ Rel(farm_broker, global_broker, "Синхронизирует события", "
 Rel(apm, global_broker, "Собирает и обрабатывает уведомления и метрики")
 Rel(apm, duty, "Отправляет уведомления")
 Rel(farm_sms, duty, "Отправляет уведомления по edge-устройствам, анализу видео", "SMS")
+Rel(schedule_api, global_broker, "Отправляет изменения в расписании", "AMQP")
 
 ' Между центральным сервером и общей системой предприятия
 Rel(global_broker, existing_system, "Передает метрики и уведомления в имеющиеся хранилища")
