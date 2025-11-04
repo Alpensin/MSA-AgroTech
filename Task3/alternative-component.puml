@@ -1,4 +1,4 @@
-@startuml main component diagram AgroTech
+@startuml alternative component diagram AgroTech
 
 ' Задаем стиль
 !NEW_C4_STYLE=1

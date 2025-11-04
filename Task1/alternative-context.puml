@@ -1,4 +1,4 @@
-@startuml main context diagram AgroTech
+@startuml alternative context diagram AgroTech
 
 ' Задаем стиль
 !NEW_C4_STYLE=1

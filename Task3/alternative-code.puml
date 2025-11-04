@@ -1,4 +1,4 @@
-@startuml main code diagram AgroTech
+@startuml alternative code diagram AgroTech
 
 ' Задаем стиль
 !NEW_C4_STYLE=1
