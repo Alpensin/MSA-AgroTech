@@ -5,6 +5,7 @@
 !theme C4_violet from ../C4-PlantUML/themes
 
 ' Импортируем элементы
+' !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
 !include ../C4-PlantUML/C4_Context.puml
 
 ' Определяем акторов
