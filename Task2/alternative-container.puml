@@ -18,9 +18,7 @@ Enterprise_Boundary(farm, "Ферма"){
     }
     System_Ext(edge_device, "Edge-устройство", "Различные IoT датчики и пульты управления оборудованием")
     System_Ext(vid_mon, "Система видеорегистрации", "Точка сбора видеопотоков с камер")
-    System_Boundary(vid_mon_anal, "Анализ данных с видеомониторинга"){
-        Container(ai, "Видеоаналитика ИИ", "Python/C/C++", "API для видеопотоков, Анализ видеопотоков с помощью ИИ")
-    }
+
     System_Boundary(notification, "Отправка уведомлений"){
         Container(notification_sender, "Обработчик уведомлений", "Python", "Читает уведомления из брокера и перенаправляет нужному адресату. Отправлляет СМС.")
     }
@@ -35,14 +33,15 @@ Enterprise_Boundary(center, "Центральный узел") {
     System_Boundary(scheduler, "Расписание"){
         Container(schedule_api, "API расписаний", "Python FastAPI", "API для управления расписанием")
     }
-
+    System_Boundary(vid_mon_anal, "Анализ данных с видеомониторинга"){
+        Container(ai, "Видеоаналитика ИИ", "Python/C/C++", "API для видеопотоков, Анализ видеопотоков с помощью ИИ")
+    }
 }
 System_Ext(existing_system, "Общая система предприятия")
 
 ' Рисуем связи
 
 ' В пределах фермы
-Rel(ai, vid_mon, "Получает видеопотоки", "ONVIF")
 Rel(ai, farm_broker, "Отправляет события и метрики, Читает изменения в расписании", "AMQP")
 
 Rel(notification_sender, farm_broker, "Читает события и метрики", "AMQP")
@@ -59,10 +58,14 @@ Rel(duty, schedule_api, "Управляет расписанием")
 
 ' Между фермой и цетральным сервером
 
+Rel(ai, vid_mon, "Получает видеопотоки", "ONVIF")
 Rel(farm_broker, global_broker, "Синхронизирует события", "AMQP")
 Rel(apm, global_broker, "Собирает и обрабатывает уведомления и метрики")
 Rel(apm, duty, "Отправляет уведомления")
 Rel(farm_sms, duty, "Отправляет уведомления по edge-устройствам, анализу видео", "SMS")
+
+' В пределах центрального узла
+Rel(ai, global_broker, "Передает метрики и уведомления")
 Rel(schedule_api, global_broker, "Отправляет изменения в расписании", "AMQP")
 
 ' Между центральным сервером и общей системой предприятия

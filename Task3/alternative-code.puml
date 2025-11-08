@@ -42,23 +42,6 @@ Enterprise_Boundary(farm, "Ферма") {
         }
     }
 
-    Container_Boundary(vid_mon_anal, "Видеоаналитика ИИ") {
-        Container_Boundary(stream_interface, "Прием видеопотоков", "C/C++") {
-            Component(stream_receiver, "StreamReceiver", "Прием видеопотоков", "C++ class")
-            Component(frame_decoder, "FrameDecoder", "Декодирование кадров", "C++ class")
-        }
-        Container_Boundary(stream_processor, "Процессор видеопотоков", "C/C++", "Обработка видеопотоков") {
-            Component(frame_processor, "FrameProcessor", "Обработка кадров", "C++ class")
-        }
-        Container_Boundary(object_detector, "Детектор объектов", "Python", "Обнаружение объектов и аномалий") {
-            Component(neural_network, "NeuralNetwork", "Нейросетевая модель", "Python class")
-            Component(anomaly_detector, "AnomalyDetector", "Детектор аномалий", "Python class")
-        }
-        Container_Boundary(event_generator, "Генератор событий", "Python", "Создание событий на основе анализа") {
-            Component(event_factory, "EventFactory", "Создание событий", "Python class")
-            Component(amqp_producer_vid, "AMQPPublisher", "Публикатор в RabbitMQ", "Python class")
-        }
-    }
 
     Container_Boundary(notification, "Обработчик уведомлений") {
         Container_Boundary(message_router, "Роутер сообщений", "Python", "Маршрутизация уведомлений. Логика повторной отправки") {
@@ -95,7 +78,25 @@ Enterprise_Boundary(center, "Центральный узел") {
         }
         Container_Boundary(schedule_publisher, "Публикатор уведомлений", "Python", "Публикация изменений расписания") {
             Component(message_generator, "MessageGenerator", "Python service", "Генератор сообщений")
-            Component(kafka_publisher, "KafkaPublisher", "Python library", "Паблишер Kafka")
+            Component(kafka_publisher, "KafkaPublisher", "Python library", "Python class")
+        }
+    }
+
+    Container_Boundary(vid_mon_anal, "Видеоаналитика ИИ") {
+        Container_Boundary(stream_interface, "Прием видеопотоков", "C/C++") {
+            Component(stream_receiver, "StreamReceiver", "Прием видеопотоков", "C++ class")
+            Component(frame_decoder, "FrameDecoder", "Декодирование кадров", "C++ class")
+        }
+        Container_Boundary(stream_processor, "Процессор видеопотоков", "C/C++", "Обработка видеопотоков") {
+            Component(frame_processor, "FrameProcessor", "Обработка кадров", "C++ class")
+        }
+        Container_Boundary(object_detector, "Детектор объектов", "Python", "Обнаружение объектов и аномалий") {
+            Component(neural_network, "NeuralNetwork", "Нейросетевая модель", "Python class")
+            Component(anomaly_detector, "AnomalyDetector", "Детектор аномалий", "Python class")
+        }
+        Container_Boundary(event_generator, "Генератор событий", "Python", "Создание событий на основе анализа") {
+            Component(event_factory, "EventFactory", "Создание событий", "Python class")
+            Component(kafka_publisher_vid, "KafkaPublisher", "Python library", "Python class")
         }
     }
 }
@@ -146,7 +147,7 @@ Rel(stream_receiver, frame_decoder, "Передает кадры в")
 '       object_detector
 Rel(anomaly_detector, neural_network, "Анализирует поведение")
 '       event_generator
-Rel(event_factory, amqp_producer_vid, "Публикует через")
+Rel(event_factory, kafka_publisher_vid, "Публикует через")
 
 '       Между компонентами
 
@@ -155,8 +156,7 @@ Rel(frame_processor, anomaly_detector, "Передает кадры в")
 Rel(anomaly_detector, event_factory, "Инициализирует создание события")
 
 '       Между контейнерами
-Rel(amqp_producer_vid, farm_broker, "Публикует события")
-Rel(stream_receiver, vid_mon, "Получает видеопотоки", "ONVIF")
+Rel(kafka_publisher_vid, global_broker, "Публикует события")
 
 
 ' Связи notification
@@ -184,6 +184,7 @@ Rel(farm_sms, operator, "Отправляет уведомления", "SMS")
 
 '       Между фермой и центральным узлом
 Rel(farm_sms, duty, "Отправляет уведомления", "SMS")
+Rel(stream_receiver, vid_mon, "Получает видеопотоки", "ONVIF")
 
 
 ' Связи schedule_api

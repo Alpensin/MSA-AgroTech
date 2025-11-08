@@ -50,12 +50,12 @@ Rel(farm_broker, global_broker, "Синхронизируют уведомлен
 Rel(duty, scheduling, "Задает расписание")
 Rel(farm_sms, duty, "Отправляет уведомления по edge-устройствам, анализу видео")
 Rel(vid_mon, vid_mon_anal, "Передает потоки видео")
-Rel(vid_mon_anal, global_broker, "Передает метрики и уведомления")
 ' В пределах центрального сервера
 
 Rel(apm, global_broker, "Обрабатывает уведомления и метрики")
 Rel(apm, duty, "Отправляет уведомления")
 Rel(scheduling, global_broker, "Отправляет события об изменении расписания")
+Rel(vid_mon_anal, global_broker, "Передает метрики и уведомления")
 
 ' Между центральным сервером и общей системой предприятия
 Rel(global_broker, existing_system, "Передает метрики и уведомления в имеющиеся хранилища")

@@ -1,0 +1,71 @@
+@startuml main code diagram AgroTech
+
+package "device_manager" {
+  class DeviceService {
+    +void runHealthChecker()
+    +DeviceStatus getDeviceStatus(deviceID: uuid)
+    +void setSchedule(scheduleEntry: Schedule)
+    +List<Schedule> getSchedule()
+    +Schedule getDeviceSchedule(deviceID: uuid)
+    +void registerDevice(device: Device)
+    +void updateDeviceStatus(deviceID: uuid, status: string)
+  }
+  
+  class DeviceRepository {
+    +Device findById(deviceID: uuid)
+    +void save(device: Device)
+    +void update(device: Device)
+    +List<Device> findAll()
+  }
+
+  class StatusRepository {
+    +void saveStatus(deviceStatus: DeviceStatus)
+    +DeviceStatus findLatestStatus(deviceID: uuid)
+    +List<DeviceStatus> findStatusHistory(deviceID: uuid, from: timestamp, to: timestamp)
+  }
+
+  class ScheduleRepository {
+    +void save(schedule: Schedule)
+    +Schedule findById(scheduleID: uuid)
+    +List<Schedule> findByDeviceId(deviceID: uuid)
+    +void delete(scheduleID: uuid)
+  }
+
+  class HealthChecker {
+    +void start()
+    +void stop()
+    +String checkDeviceHealth(deviceID: uuid)
+    +Map<uuid, DeviceStatus> checkAllDevicesHealth()
+  }
+
+  class DeviceStatus {
+    -uuid deviceID
+    -String status
+    -timestamp recordedAt
+    -map<string, object> metrics
+  }
+
+  class Device {
+    -uuid id
+    -String name
+    -String type
+    -String location
+  }
+
+  class Schedule {
+    -uuid id
+    -uuid deviceID
+    -string name
+    -string cronExpression
+    -string command
+    -boolean enabled
+  }
+}
+
+' Relationships
+DeviceService "1" -- "1" DeviceRepository : uses
+DeviceService "1" -- "1" StatusRepository : uses
+DeviceService "1" -- "1" HealthChecker : uses
+DeviceService "1" -- "1" ScheduleRepository : uses
+
+@enduml
