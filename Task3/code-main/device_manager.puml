@@ -1,5 +1,7 @@
 @startuml main code diagram AgroTech
-
+' Делать таким образом весь проект потребует значительно больше времени, чем заявлено при обучении. 
+' Неужели сдают проекты с подобной детализацией и полной кодовой диаграммой?
+' Выложил схему по компоненту device_manager 
 package "device_manager" {
   class DeviceService {
     +void runHealthChecker()
